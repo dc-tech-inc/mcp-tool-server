@@ -1,0 +1,46 @@
+{
+  "name": "mcp-repo-health",
+  "version": "0.1.0",
+  "description": "Read-only MCP server that reports the health of local git repositories over stdio.",
+  "license": "MIT",
+  "author": "DC TECH INC",
+  "type": "module",
+  "bin": {
+    "mcp-repo-health": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.17.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "pnpm run build && vitest run",
+    "secrets": "secretlint \"**/*\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@modelcontextprotocol/client": "2.3.1",
+    "@secretlint/secretlint-rule-preset-recommend": "13.0.7",
+    "@types/node": "^24",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "secretlint": "13.0.7",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5"
+  }
+}
