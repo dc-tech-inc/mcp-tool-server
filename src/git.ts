@@ -30,13 +30,14 @@ export async function runGit(
   try {
     const { stdout } = await execFileAsync(
       "git",
-      ["-C", dir, "-c", "core.quotePath=false", ...args],
+      ["-C", dir, "--no-optional-locks", "-c", "core.quotePath=false", ...args],
       {
         timeout: GIT_TIMEOUT_MS,
         maxBuffer: GIT_MAX_BUFFER,
         encoding: "utf8",
         windowsHide: true,
-        env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: ceiling },
+        // No optional locks: `git status` must not refresh `.git/index` on disk.
+        env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", GIT_CEILING_DIRECTORIES: ceiling },
       },
     );
     return stdout;
