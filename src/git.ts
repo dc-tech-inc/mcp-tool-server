@@ -53,7 +53,29 @@ export async function runGit(
   }
 }
 
-/** Removes `user:password@` from URLs. SCP-style `user@host:path` is left alone. */
+/**
+ * Removes the user and password from a remote URL. A URL that parses is
+ * rebuilt without them. Anything else that contains `@` (scp-style
+ * `user@host:path`, or a password with `/` that breaks parsing) loses
+ * everything between the scheme and the last `@`, so no part of a password
+ * survives even if a little of the host or path is dropped with it.
+ */
 export function stripUrlCredentials(url: string): string {
-  return url.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^@/]+@/i, "$1");
+  try {
+    const parsed = new URL(url);
+    if (parsed.username !== "" || parsed.password !== "") {
+      parsed.username = "";
+      parsed.password = "";
+      // The setters are no-ops for a few schemes; fall through to the cut then.
+      if (parsed.username === "" && parsed.password === "") return parsed.href;
+    } else if (!url.includes("@")) {
+      return url;
+    }
+  } catch {
+    // Not a WHATWG URL: handled below.
+  }
+  const at = url.lastIndexOf("@");
+  if (at === -1) return url;
+  const scheme = /^[a-z][a-z0-9+.-]*:\/\//i.exec(url)?.[0] ?? "";
+  return scheme + url.slice(at + 1);
 }

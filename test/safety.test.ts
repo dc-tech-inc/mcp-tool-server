@@ -2,7 +2,7 @@ import { mkdir, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { stripUrlCredentials } from "../src/git.js";
-import { type Fixture, createFixture, createOutsideRepo } from "./fixtures.js";
+import { CREDENTIAL_REMOTES, type Fixture, createFixture, createOutsideRepo } from "./fixtures.js";
 import { type Connected, connect, errorText } from "./helpers.js";
 
 let fixture: Fixture;
@@ -137,13 +137,26 @@ describe("input validation", () => {
 });
 
 describe("remote URL credentials", () => {
-  it("strips user and password from https remotes", () => {
-    const withCredentials = ["https://", "ci-user", ":", "placeholder", "@", "example.com/acme/alpha.git"].join("");
-    expect(stripUrlCredentials(withCredentials)).toBe("https://example.com/acme/alpha.git");
+  it.each(CREDENTIAL_REMOTES.map((remote) => [remote.name, remote] as const))(
+    "removes every part of the credentials: %s",
+    (_label, remote) => {
+      const stripped = stripUrlCredentials(remote.url);
+      expect(stripped).toBe(remote.stripped);
+      expect(stripped).not.toContain(remote.secret);
+    },
+  );
+
+  it("drops the user part of scp-style remotes, password or not", () => {
+    expect(stripUrlCredentials("git@example.com:acme/alpha.git")).toBe("example.com:acme/alpha.git");
+    expect(stripUrlCredentials(["user:", "pw/x@y", "@example.com:acme/alpha.git"].join(""))).toBe(
+      "example.com:acme/alpha.git",
+    );
   });
 
-  it("leaves credential-free and scp-style remotes unchanged", () => {
+  it("leaves credential-free remotes unchanged", () => {
     expect(stripUrlCredentials("https://example.com/acme/alpha.git")).toBe("https://example.com/acme/alpha.git");
-    expect(stripUrlCredentials("git@example.com:acme/alpha.git")).toBe("git@example.com:acme/alpha.git");
+    expect(stripUrlCredentials("ssh://example.com:2222/acme/alpha.git")).toBe("ssh://example.com:2222/acme/alpha.git");
+    expect(stripUrlCredentials("C:\\repos\\alpha")).toBe("C:\\repos\\alpha");
+    expect(stripUrlCredentials("/srv/git/alpha.git")).toBe("/srv/git/alpha.git");
   });
 });

@@ -140,3 +140,45 @@ export async function createOutsideRepo(): Promise<Fixture> {
   });
   return { root, repo, cleanup: () => rm(root, { recursive: true, force: true }) };
 }
+
+export interface CredentialRemote {
+  readonly name: string;
+  readonly url: string;
+  /** The fake secret inside `url`; no part of it may come back from a tool. */
+  readonly secret: string;
+  readonly stripped: string;
+}
+
+const FAKE_TOKEN_A = ["tok3n", "placeholder", "0000"].join("-");
+const FAKE_TOKEN_B = ["tok3n", "placeholder", "1111"].join("-");
+
+/**
+ * Remote URLs with fake credentials, including passwords that contain `@` and
+ * `/`. They are assembled at runtime so secret scanners do not flag this file.
+ */
+export const CREDENTIAL_REMOTES: readonly CredentialRemote[] = [
+  {
+    name: "at-in-password",
+    url: ["https://u:", "p@ss", "@example.com/x.git"].join(""),
+    secret: "p@ss",
+    stripped: "https://example.com/x.git",
+  },
+  {
+    name: "slash-in-password",
+    url: ["https://user:", "pa/ss", "@example.com/y.git"].join(""),
+    secret: "pa/ss",
+    stripped: "https://example.com/y.git",
+  },
+  {
+    name: "token",
+    url: ["https://oauth2:", FAKE_TOKEN_A, "@gitlab.example.com/group/z.git"].join(""),
+    secret: FAKE_TOKEN_A,
+    stripped: "https://gitlab.example.com/group/z.git",
+  },
+  {
+    name: "token-as-user",
+    url: ["https://", FAKE_TOKEN_B, "@example.com/w.git"].join(""),
+    secret: FAKE_TOKEN_B,
+    stripped: "https://example.com/w.git",
+  },
+];
