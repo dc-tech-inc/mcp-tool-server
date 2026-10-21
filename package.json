@@ -24,6 +24,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
     "test": "pnpm run build && vitest run",
+    "coverage": "vitest run --coverage",
     "secrets": "secretlint \"**/*\""
   },
   "dependencies": {
