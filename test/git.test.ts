@@ -9,7 +9,7 @@ const { GIT_MAX_BUFFER, GIT_TIMEOUT_MS, runGit } = await import("../src/git.js")
 type Callback = (error: Error | null, stdout?: string) => void;
 
 /** Makes the mocked `execFile` call back with `error`, or succeed with empty output. */
-function respond(error: (Error & Record<string, unknown>) | null): void {
+function respond(error: Error | null): void {
   vi.mocked(execFile).mockImplementation(((...args: unknown[]) => {
     (args.at(-1) as Callback)(error, "");
   }) as never);
@@ -38,5 +38,22 @@ describe("runGit", () => {
     expect(options.env.GIT_OPTIONAL_LOCKS).toBe("0");
     expect(options.env.GIT_TERMINAL_PROMPT).toBe("0");
     expect(options.env.GIT_CEILING_DIRECTORIES).toBe(path.dirname(dir));
+  });
+
+  it("maps a missing git executable to a readable error", async () => {
+    respond(Object.assign(new Error("spawn git ENOENT"), { code: "ENOENT" }));
+    await expect(runGit(path.resolve("repo"), ["status"])).rejects.toThrow("git executable was not found on PATH");
+  });
+
+  it("maps a git process killed by the timeout to a timeout error", async () => {
+    respond(Object.assign(new Error("Command failed"), { killed: true, signal: "SIGTERM", stderr: "" }));
+    await expect(runGit(path.resolve("repo"), ["log"])).rejects.toThrow(
+      `git log timed out after ${GIT_TIMEOUT_MS / 1000} s`,
+    );
+  });
+
+  it("reports the first stderr line of any other git failure", async () => {
+    respond(Object.assign(new Error("Command failed"), { code: 128, stderr: "\nfatal: bad object HEAD\nmore\n" }));
+    await expect(runGit(path.resolve("repo"), ["log"])).rejects.toThrow("git log failed: fatal: bad object HEAD");
   });
 });
