@@ -2,8 +2,14 @@ import { mkdir, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { stripUrlCredentials } from "../src/git.js";
-import { CREDENTIAL_REMOTES, type Fixture, createFixture, createOutsideRepo } from "./fixtures.js";
-import { type Connected, connect, errorText } from "./helpers.js";
+import {
+  CREDENTIAL_REMOTES,
+  type Fixture,
+  addCredentialRemotes,
+  createFixture,
+  createOutsideRepo,
+} from "./fixtures.js";
+import { type Connected, connect, errorText, expectNoCredentials } from "./helpers.js";
 
 let fixture: Fixture;
 let outside: Fixture;
@@ -137,6 +143,18 @@ describe("input validation", () => {
 });
 
 describe("remote URL credentials", () => {
+  it("repo_summary returns credentialed remotes stripped, with no part of any secret", async () => {
+    await addCredentialRemotes(outside.repo);
+    const other = await connect([outside.root]);
+    try {
+      const result = await other.client.callTool({ name: "repo_summary", arguments: { path: outside.repo } });
+      expect(result.isError).toBeFalsy();
+      expectNoCredentials(result);
+    } finally {
+      await other.close();
+    }
+  });
+
   it.each(CREDENTIAL_REMOTES.map((remote) => [remote.name, remote] as const))(
     "removes every part of the credentials: %s",
     (_label, remote) => {

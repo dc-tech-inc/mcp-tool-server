@@ -182,3 +182,11 @@ export const CREDENTIAL_REMOTES: readonly CredentialRemote[] = [
     stripped: "https://example.com/w.git",
   },
 ];
+
+/** Adds every `CREDENTIAL_REMOTES` entry to `repo` as a git remote. */
+export async function addCredentialRemotes(repo: string): Promise<void> {
+  for (const remote of CREDENTIAL_REMOTES) {
+    await git(repo, ["remote", "add", remote.name, remote.url]);
+  }
+}
+

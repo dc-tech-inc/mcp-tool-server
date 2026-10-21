@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type Fixture, createFixture } from "./fixtures.js";
+import { type Fixture, addCredentialRemotes, createFixture } from "./fixtures.js";
+import { expectNoCredentials } from "./helpers.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const entry = path.resolve(here, "..", "dist", "index.js");
@@ -41,5 +42,12 @@ describe("stdio end-to-end", () => {
     const result = await client.callTool({ name: "repo_summary", arguments: { path: fixture.repo } });
     expect(result.isError).toBeFalsy();
     expect((result.structuredContent as { totalCommits: number }).totalCommits).toBe(3);
+  });
+
+  it("strips credentialed remotes over the real pipe", async () => {
+    await addCredentialRemotes(fixture.repo);
+    const result = await client.callTool({ name: "repo_summary", arguments: { path: fixture.repo } });
+    expect(result.isError).toBeFalsy();
+    expectNoCredentials(result);
   });
 });
