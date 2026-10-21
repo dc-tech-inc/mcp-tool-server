@@ -1,4 +1,4 @@
-import { mkdir, symlink } from "node:fs/promises";
+import { mkdir, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { stripUrlCredentials } from "../src/git.js";
@@ -79,6 +79,41 @@ describe("git repository check", () => {
       });
       expect(result.isError).toBe(true);
       expect(errorText(result)).toContain("not a git repository");
+    } finally {
+      await wide.close();
+    }
+  });
+});
+
+describe("repository containment", () => {
+  it("rejects an allowed root that is a plain folder inside a repository outside the roots", async () => {
+    // git would otherwise walk up from the root and report on the enclosing repository.
+    const allowed = path.join(outside.repo, "allowed");
+    await mkdir(path.join(allowed, "sub"), { recursive: true });
+    await writeFile(path.join(allowed, "sub", "f.txt"), "inside the parent repo\n", "utf8");
+    const narrow = await connect([allowed]);
+    try {
+      for (const target of [allowed, path.join(allowed, "sub")]) {
+        const result = await narrow.client.callTool({ name: "repo_summary", arguments: { path: target } });
+        expect(result.isError).toBe(true);
+        expect(errorText(result)).toMatch(/not a git repository|outside the allowed roots/);
+        expect(errorText(result)).not.toContain("Outside commit");
+      }
+    } finally {
+      await narrow.close();
+    }
+  });
+
+  it("rejects a folder whose .git file points to a git directory outside the roots", async () => {
+    const pointer = path.join(fixture.root, "pointer");
+    await mkdir(pointer);
+    await writeFile(path.join(pointer, ".git"), `gitdir: ${path.join(outside.repo, ".git").replaceAll("\\", "/")}\n`);
+    const wide = await connect([fixture.root]);
+    try {
+      const result = await wide.client.callTool({ name: "repo_summary", arguments: { path: pointer } });
+      expect(result.isError).toBe(true);
+      expect(errorText(result)).toContain("outside the allowed roots");
+      expect(errorText(result)).not.toContain("Outside commit");
     } finally {
       await wide.close();
     }

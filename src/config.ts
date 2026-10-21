@@ -39,6 +39,11 @@ function isInside(root: string, candidate: string): boolean {
   return rel === "" || (rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
 }
 
+/** The outermost allowed root that contains the canonical path `real`, if any. */
+export function containingRoot(config: Config, real: string): string | undefined {
+  return config.roots.filter((root) => isInside(root, real)).sort((a, b) => a.length - b.length)[0];
+}
+
 /**
  * Resolves a caller-supplied repository path to a real directory inside an
  * allowed root. `realpath` follows symlinks and junctions first, so a link
@@ -56,7 +61,7 @@ export async function resolveInsideRoots(config: Config, input: string): Promise
     throw new ToolError(`path does not exist: ${input}`);
   }
 
-  if (!config.roots.some((root) => isInside(root, real))) {
+  if (containingRoot(config, real) === undefined) {
     throw new ToolError("path is outside the allowed roots");
   }
 

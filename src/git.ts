@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import path from "node:path";
 import { promisify } from "node:util";
 import { ToolError } from "./errors.js";
 
@@ -16,8 +17,16 @@ interface GitExecError extends NodeJS.ErrnoException {
  * Runs a fixed git subcommand inside `dir`. Arguments are passed as an array to
  * `execFile` (never a shell), and every caller supplies its own fixed flags.
  * Caller-provided data never becomes a git option.
+ *
+ * `ceiling` becomes `GIT_CEILING_DIRECTORIES`: git never walks up into it while
+ * looking for a repository. The default, the parent of `dir`, means git only
+ * uses a repository whose top level is `dir` itself.
  */
-export async function runGit(dir: string, args: readonly string[]): Promise<string> {
+export async function runGit(
+  dir: string,
+  args: readonly string[],
+  ceiling: string = path.dirname(dir),
+): Promise<string> {
   try {
     const { stdout } = await execFileAsync(
       "git",
@@ -27,7 +36,7 @@ export async function runGit(dir: string, args: readonly string[]): Promise<stri
         maxBuffer: GIT_MAX_BUFFER,
         encoding: "utf8",
         windowsHide: true,
-        env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+        env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: ceiling },
       },
     );
     return stdout;
