@@ -1,7 +1,11 @@
 import { mkdir, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { stripUrlCredentials } from "../src/git.js";
+import { hotspotsTool } from "../src/tools/hotspots.js";
+import { recentActivityTool } from "../src/tools/recent-activity.js";
+import { repoSummaryTool } from "../src/tools/repo-summary.js";
+import { staleBranchesTool } from "../src/tools/stale-branches.js";
 import {
   CREDENTIAL_REMOTES,
   type Fixture,
@@ -127,18 +131,39 @@ describe("repository containment", () => {
 });
 
 describe("input validation", () => {
+  const tools = {
+    recent_activity: recentActivityTool,
+    change_hotspots: hotspotsTool,
+    stale_branches: staleBranchesTool,
+    repo_summary: repoSummaryTool,
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it.each([
-    ["days below range", "recent_activity", { days: 0 }],
-    ["days above range", "recent_activity", { days: 1000 }],
-    ["limit above range", "change_hotspots", { limit: 1000 }],
-    ["olderThanDays above range", "stale_branches", { olderThanDays: 99999 }],
-    ["empty path", "repo_summary", { path: "" }],
-  ])("rejects invalid arguments: %s", async (_label, name, extra) => {
+    ["days below range", "recent_activity", "days", { days: 0 }],
+    ["days above range", "recent_activity", "days", { days: 1000 }],
+    ["limit above range", "change_hotspots", "limit", { limit: 1000 }],
+    ["olderThanDays above range", "stale_branches", "olderThanDays", { olderThanDays: 99999 }],
+    ["empty path", "repo_summary", "path", { path: "" }],
+  ] as const)("rejects invalid arguments before the handler runs: %s", async (_label, name, field, extra) => {
+    const handler = vi.spyOn(tools[name], "run");
     const result = await client.client.callTool({
       name,
       arguments: { path: fixture.repo, ...extra },
     });
     expect(result.isError).toBe(true);
+    expect(errorText(result)).toContain(field);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("runs the handler for valid arguments, so the spy is meaningful", async () => {
+    const handler = vi.spyOn(tools.recent_activity, "run");
+    const result = await client.client.callTool({ name: "recent_activity", arguments: { path: fixture.repo, days: 5 } });
+    expect(result.isError).toBeFalsy();
+    expect(handler).toHaveBeenCalledOnce();
   });
 });
 
