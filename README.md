@@ -143,7 +143,7 @@ Measured with `pnpm coverage` (v8 provider, `src/**` only) on the run recorded w
 - `src/tools/*.ts` contains one module per tool. Each exports a `defineTool` object (name, title, description, zod input shape, zod output schema, handler). Handlers receive a validated directory and never see raw input paths.
 - Input validation uses zod v4 (`import * as z from "zod/v4"`). The SDK rejects schema violations before a handler runs.
 
-## Honest limitations
+## Limitations
 
 - **Local git only.** No GitHub or GitLab API calls. Remote URLs are reported from the local config only.
 - **Large repositories can hit the 10-second git timeout.** The timeout is fixed in code; the tools return a clear error rather than partial data.
